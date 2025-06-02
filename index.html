@@ -1,4 +1,138 @@
- // Canvas drawing functionality
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shape Classifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #1a202c;
+        }
+        h1 {
+            color: #b8bbbe;
+        }
+        p{
+            color: #c0392b;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .canvas-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.clear {
+            background-color: #e74c3c;
+        }
+        button.clear:hover {
+            background-color: #c0392b;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .confidence {
+            width: 100%;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .confidence-bar {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+        }
+        .loading {
+            display: none;
+            margin-top: 10px;
+        }
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Shape Classifier</h1>
+        <p>Draw a circle, square, or triangle below and click "Classify"</p>
+        
+        <div class="canvas-container">
+            <canvas id="drawingCanvas" width="300" height="300"></canvas>
+        </div>
+        
+        <div class="buttons">
+            <button id="classifyBtn">Classify</button>
+            <button id="clearBtn" class="clear">Clear</button>
+        </div>
+        
+        <div class="result">
+            <h3>Prediction:</h3>
+            <div id="predictionResult">Draw a shape and click Classify</div>
+            
+            <div class="confidence" id="confidenceBars">
+                <!-- Confidence bars will be added here by JavaScript -->
+            </div>
+        </div>
+        
+        <div class="loading" id="loadingIndicator">
+            <p>Classifying your drawing...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <script>
+        // Canvas drawing functionality
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
@@ -179,3 +313,6 @@
             };
             return colors[className] || '#9b59b6';
         }
+    </script>
+</body>
+</html>
