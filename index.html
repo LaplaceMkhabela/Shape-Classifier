@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shape Classifier</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -132,187 +133,118 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
     <script>
-        // Canvas drawing functionality
-        const canvas = document.getElementById('drawingCanvas');
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
+        // Add these at the top of your script
+let model = null;
+
+// Load the model when the page loads
+async function loadModel() {
+    try {
+        model = await tf.loadLayersModel('model/model.json');
+        console.log("Model loaded successfully");
+    } catch (error) {
+        console.error("Error loading model:", error);
+    }
+}
+
+// Call this when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadModel();
+    // ... rest of your existing initialization code
+});
+
+// Updated classify function
+async function classifyShape() {
+    if (!model) {
+        resultDiv.textContent = "Model is still loading, please wait...";
+        return;
+    }
+
+    if (paths.length === 0 && currentPath.length === 0) {
+        resultDiv.textContent = 'Please draw a shape first';
+        return;
+    }
+
+    // Combine all paths into a single set of points
+    let allPoints = [];
+    paths.forEach(path => allPoints.push(...path));
+    if (currentPath.length > 0) allPoints.push(...currentPath);
+
+    if (allPoints.length < 3) {
+        resultDiv.textContent = 'Not enough points to classify';
+        return;
+    }
+
+    // Get the bounding box of the drawing
+    const bbox = getBoundingBox(allPoints);
+    
+    // Create a 28x28 grayscale image from the drawing
+    const imageData = createImageDataFromDrawing(bbox, allPoints);
+    
+    // Preprocess the image for the model
+    const tensor = preprocessImage(imageData);
+    
+    try {
+        // Make prediction
+        const prediction = await model.predict(tensor).data();
         
-        // Set canvas background to white
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 8;
-        ctx.lineCap = 'round';
+        // Get the class with highest probability
+        const classes = ['Circle', 'Square', 'Triangle']; // Match your model's output
+        const maxIndex = prediction.indexOf(Math.max(...prediction));
         
-        // Drawing event listeners
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
-        
-        // Touch support for mobile devices
-        canvas.addEventListener('touchstart', handleTouchStart);
-        canvas.addEventListener('touchmove', handleTouchMove);
-        canvas.addEventListener('touchend', stopDrawing);
-        
-        function handleTouchStart(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousedown', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
-        }
-        
-        function handleTouchMove(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousemove', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
-        }
-        
-        function startDrawing(e) {
-            isDrawing = true;
-            draw(e);
-        }
-        
-        function draw(e) {
-            if (!isDrawing) return;
-            
-            // Get mouse position relative to canvas
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        }
-        
-        function stopDrawing() {
-            isDrawing = false;
-            ctx.beginPath();
-        }
-        
-        // Clear canvas
-        document.getElementById('clearBtn').addEventListener('click', function() {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('predictionResult').textContent = 'Draw a shape and click Classify';
-            document.getElementById('confidenceBars').innerHTML = '';
-        });
-        
-        // Load TensorFlow.js model and classify
-        let model;
-        
-        async function loadModel() {
-            try {
-                // Load your model (replace with your actual model URL)
-                model = await tf.loadLayersModel('/model/model.json');
-                console.log('Model loaded successfully');
-            } catch (error) {
-                console.error('Error loading model:', error);
-                document.getElementById('predictionResult').textContent = 'Error loading model. See console for details.';
-            }
-        }
-        
-        // Load model when page loads
-        loadModel();
-        
-        // Classify drawing
-        document.getElementById('classifyBtn').addEventListener('click', async function() {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            loadingIndicator.classList.add('active');
-            
-            try {
-                // Preprocess the canvas image
-                const imageData = preprocessCanvas(canvas);
-                
-                // Make prediction
-                const prediction = await model.predict(imageData).data();
-                
-                // Get class names (these should match your model's classes)
-                const classes = ['circle', 'square', 'triangle'];
-                const predictedClass = classes[prediction.indexOf(Math.max(...prediction))];
-                
-                // Display results
-                document.getElementById('predictionResult').textContent = `This looks like a ${predictedClass}!`;
-                
-                // Display confidence bars
-                displayConfidenceBars(prediction, classes);
-                
-            } catch (error) {
-                console.error('Classification error:', error);
-                document.getElementById('predictionResult').textContent = 'Error during classification. See console for details.';
-            } finally {
-                loadingIndicator.classList.remove('active');
-            }
-        });
-        
-        function preprocessCanvas(canvasElement) {
-            // Create a temporary canvas to resize the drawing to 128x128 (model's expected input)
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = 128;
-            tempCanvas.height = 128;
-            
-            // Draw the original canvas content to the temp canvas and scale it down
-            tempCtx.drawImage(canvasElement, 0, 0, 128, 128);
-            
-            // Get image data and convert to tensor
-            const imageData = tempCtx.getImageData(0, 0, 128, 128);
-            const tensor = tf.browser.fromPixels(imageData)
-                .toFloat()
-                .div(255.0)  // Normalize to [0,1]
-                .expandDims();  // Add batch dimension
-            
-            return tensor;
-        }
-        
-        function displayConfidenceBars(predictions, classes) {
-            const confidenceBars = document.getElementById('confidenceBars');
-            confidenceBars.innerHTML = '';
-            
-            // Create a confidence bar for each class
-            classes.forEach((className, index) => {
-                const confidence = predictions[index] * 100;
-                
-                const container = document.createElement('div');
-                container.style.width = '100%';
-                container.style.marginBottom = '10px';
-                
-                const label = document.createElement('div');
-                label.className = 'confidence-label';
-                label.innerHTML = `<span>${className}</span><span>${confidence.toFixed(1)}%</span>`;
-                
-                const barContainer = document.createElement('div');
-                barContainer.className = 'confidence-bar';
-                
-                const barFill = document.createElement('div');
-                barFill.className = 'confidence-fill';
-                barFill.style.width = `${confidence}%`;
-                barFill.style.backgroundColor = getColorForClass(className);
-                
-                barContainer.appendChild(barFill);
-                container.appendChild(label);
-                container.appendChild(barContainer);
-                confidenceBars.appendChild(container);
-            });
-        }
-        
-        function getColorForClass(className) {
-            const colors = {
-                'circle': '#3498db',
-                'square': '#2ecc71',
-                'triangle': '#e74c3c'
-            };
-            return colors[className] || '#9b59b6';
-        }
+        resultDiv.textContent = `I think this is a ${classes[maxIndex]}! (Confidence: ${(prediction[maxIndex] * 100).toFixed(1)}%)`;
+    } catch (error) {
+        console.error("Prediction error:", error);
+        resultDiv.textContent = "Error classifying shape";
+    }
+}
+
+function createImageDataFromDrawing(bbox, points) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 28;
+    canvas.height = 28;
+    const ctx = canvas.getContext('2d');
+    
+    // Fill with white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, 28, 28);
+    
+    // Calculate scale and offset to fit drawing in 28x28
+    const width = bbox.maxX - bbox.minX;
+    const height = bbox.maxY - bbox.minY;
+    const scale = Math.min(26 / width, 26 / height);
+    const offsetX = (28 - width * scale) / 2 - bbox.minX * scale;
+    const offsetY = (28 - height * scale) / 2 - bbox.minY * scale;
+    
+    // Draw the shape centered and scaled
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    
+    points.forEach((point, i) => {
+        const x = point.x * scale + offsetX;
+        const y = point.y * scale + offsetY;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    
+    ctx.stroke();
+    
+    return ctx.getImageData(0, 0, 28, 28);
+}
+
+function preprocessImage(imageData) {
+    // Convert to grayscale float32 tensor
+    const { data, width, height } = imageData;
+    const buffer = new Float32Array(width * height);
+    
+    for (let i = 0; i < width * height; i++) {
+        // Convert to grayscale and normalize to [0,1]
+        buffer[i] = (255 - data[i * 4]) / 255.0;
+    }
+    
+    // Reshape to match model input [batch, height, width, channels]
+    return tf.tensor4d(buffer, [1, 28, 28, 1]);
+}
     </script>
 </body>
 </html>
