@@ -122,7 +122,7 @@
             <div id="predictionResult">Draw a shape and click Classify</div>
             
             <div class="confidence" id="confidenceBars">
-                <!-- Confidence bars will be added here by JavaScript -->
+                
             </div>
         </div>
         
@@ -133,7 +133,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
     <script>
-        // Add these at the top of your script
+       
 let model = null;
 
 // Load the model when the page loads
@@ -146,13 +146,13 @@ async function loadModel() {
     }
 }
 
-// Call this when the page loads
+
 document.addEventListener('DOMContentLoaded', function() {
     loadModel();
-    // ... rest of your existing initialization code
+    
 });
 
-// Updated classify function
+
 async function classifyShape() {
     if (!model) {
         resultDiv.textContent = "Model is still loading, please wait...";
@@ -164,7 +164,7 @@ async function classifyShape() {
         return;
     }
 
-    // Combine all paths into a single set of points
+    
     let allPoints = [];
     paths.forEach(path => allPoints.push(...path));
     if (currentPath.length > 0) allPoints.push(...currentPath);
@@ -174,21 +174,21 @@ async function classifyShape() {
         return;
     }
 
-    // Get the bounding box of the drawing
+   
     const bbox = getBoundingBox(allPoints);
     
-    // Create a 28x28 grayscale image from the drawing
+
     const imageData = createImageDataFromDrawing(bbox, allPoints);
     
-    // Preprocess the image for the model
+   
     const tensor = preprocessImage(imageData);
     
     try {
-        // Make prediction
+        
         const prediction = await model.predict(tensor).data();
         
-        // Get the class with highest probability
-        const classes = ['Circle', 'Square', 'Triangle']; // Match your model's output
+        
+        const classes = ['Circle', 'Square', 'Triangle']; 
         const maxIndex = prediction.indexOf(Math.max(...prediction));
         
         resultDiv.textContent = `I think this is a ${classes[maxIndex]}! (Confidence: ${(prediction[maxIndex] * 100).toFixed(1)}%)`;
@@ -204,18 +204,18 @@ function createImageDataFromDrawing(bbox, points) {
     canvas.height = 28;
     const ctx = canvas.getContext('2d');
     
-    // Fill with white background
+
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, 28, 28);
     
-    // Calculate scale and offset to fit drawing in 28x28
+    
     const width = bbox.maxX - bbox.minX;
     const height = bbox.maxY - bbox.minY;
     const scale = Math.min(26 / width, 26 / height);
     const offsetX = (28 - width * scale) / 2 - bbox.minX * scale;
     const offsetY = (28 - height * scale) / 2 - bbox.minY * scale;
     
-    // Draw the shape centered and scaled
+    
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -233,16 +233,16 @@ function createImageDataFromDrawing(bbox, points) {
 }
 
 function preprocessImage(imageData) {
-    // Convert to grayscale float32 tensor
+   
     const { data, width, height } = imageData;
     const buffer = new Float32Array(width * height);
     
     for (let i = 0; i < width * height; i++) {
-        // Convert to grayscale and normalize to [0,1]
+        
         buffer[i] = (255 - data[i * 4]) / 255.0;
     }
     
-    // Reshape to match model input [batch, height, width, channels]
+    
     return tf.tensor4d(buffer, [1, 28, 28, 1]);
 }
     </script>
